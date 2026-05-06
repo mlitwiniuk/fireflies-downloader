@@ -1,0 +1,57 @@
+{{define "head"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{if .Title}}{{.Title}} · {{end}}Fireflies Archive</title>
+  <script>
+    (() => {
+      const stored = localStorage.getItem("fireflies-theme");
+      const systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = stored || (systemDark ? "dark" : "light");
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+{{end}}
+
+{{define "chromeStart"}}
+{{template "head" .}}
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Primary">
+    <a class="brand" href="/">
+      <span class="brand-mark">F</span>
+      <span>
+        <strong>Fireflies Archive</strong>
+        <small>{{.DBPath}}</small>
+      </span>
+    </a>
+    <nav class="nav-list">
+      <a class="nav-item {{if eq .Active "dashboard"}}is-active{{end}}" href="/">Dashboard</a>
+      <a class="nav-item {{if eq .Active "insights"}}is-active{{end}}" href="/insights">Insights</a>
+      <a class="nav-item {{if eq .Active "people"}}is-active{{end}}" href="/people">People</a>
+      <a class="nav-item {{if eq .Active "transcripts"}}is-active{{end}}" href="/transcripts">Transcripts</a>
+    </nav>
+    <button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
+      <span class="theme-icon" aria-hidden="true">◐</span>
+    </button>
+  </aside>
+  <main class="main">
+{{end}}
+
+{{define "chromeEnd"}}
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
+{{end}}
+
+{{define "empty"}}
+<div class="empty-state">
+  <strong>{{.}}</strong>
+</div>
+{{end}}

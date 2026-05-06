@@ -1,0 +1,119 @@
+{{define "transcripts.gohtml"}}
+{{template "chromeStart" .}}
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Search and review</p>
+    <h1>Transcripts</h1>
+  </div>
+</header>
+
+<form class="toolbar advanced" method="get" action="/transcripts">
+  <label class="search-field">
+    <span>Search</span>
+    <input type="search" name="q" value="{{.TranscriptList.Query}}" placeholder="title, summary, speaker text, participant">
+  </label>
+  <label>
+    <span>Organizer</span>
+    <select name="organizer">
+      <option value="">All organizers</option>
+      {{range .TranscriptList.Organizers}}
+        <option value="{{.}}" {{if eq . $.TranscriptList.Organizer}}selected{{end}}>{{.}}</option>
+      {{end}}
+    </select>
+  </label>
+  <label>
+    <span>Person</span>
+    <select name="person">
+      <option value="">Anyone</option>
+      {{range .TranscriptList.People}}
+        <option value="{{.Key}}" {{if eq .Key $.TranscriptList.Person}}selected{{end}}>{{.Label}}</option>
+      {{end}}
+    </select>
+  </label>
+  <label>
+    <span>Type</span>
+    <select name="type">
+      <option value="">All types</option>
+      {{range .TranscriptList.MeetingTypes}}
+        <option value="{{.}}" {{if eq . $.TranscriptList.MeetingType}}selected{{end}}>{{.}}</option>
+      {{end}}
+    </select>
+  </label>
+  <label>
+    <span>Sentiment</span>
+    <select name="sentiment">
+      <option value="">Any</option>
+      <option value="positive" {{if eq .TranscriptList.Sentiment "positive"}}selected{{end}}>Positive</option>
+      <option value="negative" {{if eq .TranscriptList.Sentiment "negative"}}selected{{end}}>High friction</option>
+      <option value="mixed" {{if eq .TranscriptList.Sentiment "mixed"}}selected{{end}}>Mixed</option>
+    </select>
+  </label>
+  <button class="button primary" type="submit">Search</button>
+  {{if or .TranscriptList.Query .TranscriptList.Organizer .TranscriptList.Person .TranscriptList.MeetingType .TranscriptList.Sentiment}}
+    <a class="button ghost" href="/transcripts">Clear</a>
+  {{end}}
+</form>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2>{{formatNumber .TranscriptList.Result.Total}} results</h2>
+    <span>Page {{.TranscriptList.Result.Page}} of {{.TranscriptList.Result.TotalPages}}</span>
+  </div>
+
+  {{if .TranscriptList.Result.Rows}}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Date</th>
+            <th>Organizer</th>
+            <th>Length</th>
+            <th>Sentiment</th>
+            <th>Content</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .TranscriptList.Result.Rows}}
+            <tr>
+              <td>
+                <a class="table-title" href="/transcripts/{{.ID}}">{{if .Title}}{{.Title}}{{else}}Untitled transcript{{end}}</a>
+                {{if .ShortSummary}}<small>{{truncate .ShortSummary 140}}</small>{{end}}
+              </td>
+              <td>{{formatDate .DateString}}</td>
+              <td>{{if .OrganizerEmail}}{{.OrganizerEmail}}{{else}}Unknown{{end}}</td>
+              <td>{{formatDuration .Duration}}</td>
+              <td>
+                <span class="sentiment small positive">{{formatPercent .PositivePct}}</span>
+                <span class="sentiment small negative">{{formatPercent .NegativePct}}</span>
+              </td>
+              <td>
+                <span class="pill">{{formatNumber .SentenceCount}} lines</span>
+                {{if .MediaCount}}<span class="pill muted">{{.MediaCount}} media</span>{{end}}
+                {{if .MeetingType}}<span class="pill accent">{{.MeetingType}}</span>{{end}}
+              </td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  {{else}}
+    {{template "empty" "No matching transcripts"}}
+  {{end}}
+</section>
+
+{{if gt .TranscriptList.Result.TotalPages 1}}
+  <nav class="pagination" aria-label="Pagination">
+    {{if .TranscriptList.Result.HasPrev}}
+      <a href="/transcripts?q={{.TranscriptList.Query | urlquery}}&organizer={{.TranscriptList.Organizer | urlquery}}&person={{.TranscriptList.Person | urlquery}}&type={{.TranscriptList.MeetingType | urlquery}}&sentiment={{.TranscriptList.Sentiment | urlquery}}&page={{.TranscriptList.Result.PrevPage}}">Previous</a>
+    {{end}}
+    {{range sequence 1 .TranscriptList.Result.TotalPages}}
+      <a class="{{currentPageClass $.TranscriptList.Result.Page .}}" href="/transcripts?q={{$.TranscriptList.Query | urlquery}}&organizer={{$.TranscriptList.Organizer | urlquery}}&person={{$.TranscriptList.Person | urlquery}}&type={{$.TranscriptList.MeetingType | urlquery}}&sentiment={{$.TranscriptList.Sentiment | urlquery}}&page={{.}}">{{.}}</a>
+    {{end}}
+    {{if .TranscriptList.Result.HasNext}}
+      <a href="/transcripts?q={{.TranscriptList.Query | urlquery}}&organizer={{.TranscriptList.Organizer | urlquery}}&person={{.TranscriptList.Person | urlquery}}&type={{.TranscriptList.MeetingType | urlquery}}&sentiment={{.TranscriptList.Sentiment | urlquery}}&page={{.TranscriptList.Result.NextPage}}">Next</a>
+    {{end}}
+  </nav>
+{{end}}
+{{template "chromeEnd" .}}
+{{end}}

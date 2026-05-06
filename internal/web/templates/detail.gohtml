@@ -1,0 +1,166 @@
+{{define "detail.gohtml"}}
+{{template "chromeStart" .}}
+{{$t := .TranscriptDetail.Transcript}}
+{{$s := .TranscriptDetail.Summary}}
+{{$a := .TranscriptDetail.Analytics}}
+<header class="page-header transcript-heading">
+  <div>
+    <a class="back-link" href="/transcripts">Back to transcripts</a>
+    <h1>{{if $t.Title}}{{$t.Title}}{{else}}Untitled transcript{{end}}</h1>
+    <p>{{formatDate $t.DateString}} · {{formatDuration $t.Duration}} · {{joinNonEmpty $t.OrganizerEmail $s.MeetingType}}</p>
+  </div>
+  {{if $t.MeetingLink}}<a class="button" href="{{$t.MeetingLink}}" target="_blank" rel="noreferrer">Meeting link</a>{{end}}
+</header>
+
+<section class="stat-grid compact" aria-label="Transcript totals">
+  <div class="stat"><span>Sentences</span><strong>{{formatNumber $t.SentenceCount}}</strong></div>
+  <div class="stat"><span>Speakers</span><strong>{{formatNumber $t.SpeakerCount}}</strong></div>
+  <div class="stat"><span>Attendees</span><strong>{{formatNumber $t.AttendeeCount}}</strong></div>
+  <div class="stat"><span>Media</span><strong>{{formatNumber $t.MediaCount}}</strong></div>
+</section>
+
+<section class="content-grid two">
+  <div class="panel">
+    <div class="panel-header"><h2>Summary</h2>{{if $s.MeetingType}}<span>{{$s.MeetingType}}</span>{{end}}</div>
+    <div class="prose">
+      {{if $s.ShortSummary}}<div class="markdown">{{markdown $s.ShortSummary}}</div>{{end}}
+      {{if $s.Overview}}<div class="markdown">{{markdown $s.Overview}}</div>{{end}}
+      {{if $s.ActionItems}}<h3>Action items</h3><div class="markdown">{{markdown $s.ActionItems}}</div>{{end}}
+      {{if $s.Outline}}<h3>Outline</h3><div class="markdown">{{markdown $s.Outline}}</div>{{end}}
+      {{if $s.Notes}}<h3>Notes</h3><div class="markdown">{{markdown $s.Notes}}</div>{{end}}
+      {{if $s.Keywords}}<h3>Keywords</h3><div class="markdown">{{markdown $s.Keywords}}</div>{{end}}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h2>Metadata</h2></div>
+    <dl class="meta-grid">
+      <dt>Organizer</dt><dd>{{if $t.OrganizerEmail}}{{$t.OrganizerEmail}}{{else}}Unknown{{end}}</dd>
+      <dt>Host</dt><dd>{{if $t.HostEmail}}{{$t.HostEmail}}{{else}}Unknown{{end}}</dd>
+      <dt>User</dt><dd>{{joinNonEmpty $t.UserName $t.UserEmail}}</dd>
+      <dt>Participants</dt><dd>{{if $t.Participants}}{{$t.Participants}}{{else}}Unknown{{end}}</dd>
+      <dt>Calendar</dt><dd>{{joinNonEmpty $t.CalendarType $t.CalendarID}}</dd>
+      <dt>Exported</dt><dd>{{formatDate $t.LastExportedAt}}</dd>
+      <dt>Raw file</dt><dd class="mono">{{if $t.RawJSONFile}}{{$t.RawJSONFile}}{{else}}Unavailable{{end}}</dd>
+    </dl>
+  </div>
+</section>
+
+<section class="content-grid two">
+  <div class="panel">
+    <div class="panel-header"><h2>Sentiment and categories</h2></div>
+    <div class="metric-stack">
+      <div><span>Positive</span><strong>{{formatPercent $a.PositivePct}}</strong><div class="bar-track positive"><span class="bar-fill" style="width: {{barWidth $a.PositivePct 100}}"></span></div></div>
+      <div><span>Neutral</span><strong>{{formatPercent $a.NeutralPct}}</strong><div class="bar-track neutral"><span class="bar-fill" style="width: {{barWidth $a.NeutralPct 100}}"></span></div></div>
+      <div><span>Negative</span><strong>{{formatPercent $a.NegativePct}}</strong><div class="bar-track negative"><span class="bar-fill" style="width: {{barWidth $a.NegativePct 100}}"></span></div></div>
+    </div>
+    <div class="pill-row">
+      <span class="pill">Questions {{$a.CategoryQuestions}}</span>
+      <span class="pill">Dates {{$a.CategoryDateTimes}}</span>
+      <span class="pill">Metrics {{$a.CategoryMetrics}}</span>
+      <span class="pill">Tasks {{$a.CategoryTasks}}</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h2>Media and links</h2></div>
+    <div class="compact-list">
+      {{if $t.TranscriptURL}}<a class="compact-row" href="{{$t.TranscriptURL}}" target="_blank" rel="noreferrer"><span><strong>Fireflies transcript</strong><small>{{$t.TranscriptURL}}</small></span></a>{{end}}
+      {{if $t.AudioURL}}<a class="compact-row" href="{{$t.AudioURL}}" target="_blank" rel="noreferrer"><span><strong>Audio URL</strong><small>{{$t.AudioURL}}</small></span></a>{{end}}
+      {{if $t.VideoURL}}<a class="compact-row" href="{{$t.VideoURL}}" target="_blank" rel="noreferrer"><span><strong>Video URL</strong><small>{{$t.VideoURL}}</small></span></a>{{end}}
+      {{range .TranscriptDetail.Media}}
+        <div class="compact-row"><span><strong>{{.Kind}}</strong><small>{{if .Path}}{{.Path}}{{else}}{{.Error}}{{end}}</small></span></div>
+      {{end}}
+      {{if and (not $t.TranscriptURL) (not $t.AudioURL) (not $t.VideoURL) (not .TranscriptDetail.Media)}}{{template "empty" "No media or links stored"}}{{end}}
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h2>Speakers</h2></div>
+  {{if .TranscriptDetail.Speakers}}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Duration</th><th>Words</th><th>Questions</th><th>WPM</th></tr></thead>
+        <tbody>
+          {{range .TranscriptDetail.Speakers}}
+            <tr>
+              <td>{{if .Name}}{{.Name}}{{else}}{{.ID}}{{end}}</td>
+              <td>{{formatDuration .Duration}}</td>
+              <td>{{formatNumber .WordCount}}</td>
+              <td>{{formatNumber .Questions}}</td>
+              <td>{{printf "%.0f" .WordsPerMinute}}</td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  {{else}}
+    {{template "empty" "No speaker data stored"}}
+  {{end}}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h2>Transcript</h2><span>{{formatNumber (len .TranscriptDetail.Sentences)}} lines</span></div>
+  {{if .TranscriptDetail.Sentences}}
+    <div class="sentence-list">
+      {{range .TranscriptDetail.Sentences}}
+        <article class="sentence-row">
+          <aside>
+            <strong>{{if .SpeakerName}}{{.SpeakerName}}{{else}}Speaker{{end}}</strong>
+            <small>{{sentenceTime .StartTime .EndTime}}</small>
+          </aside>
+          <p>{{.Text}}</p>
+        </article>
+      {{end}}
+    </div>
+  {{else}}
+    {{template "empty" "No transcript sentences stored"}}
+  {{end}}
+</section>
+
+<section class="content-grid two">
+  <div class="panel">
+    <div class="panel-header"><h2>Attendees</h2></div>
+    {{if .TranscriptDetail.Attendees}}
+      <div class="compact-list">
+        {{range .TranscriptDetail.Attendees}}
+          <div class="compact-row"><span><strong>{{joinNonEmpty .DisplayName .Name .Email}}</strong><small>{{joinNonEmpty .Location .PhoneNumber}}</small></span></div>
+        {{end}}
+      </div>
+    {{else}}{{template "empty" "No attendees stored"}}{{end}}
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h2>Channels and sharing</h2></div>
+    <div class="compact-list">
+      {{range .TranscriptDetail.Channels}}<div class="compact-row"><span><strong>{{if .Title}}{{.Title}}{{else}}{{.ID}}{{end}}</strong><small>{{joinNonEmpty .CreatedBy .ID}}</small></span></div>{{end}}
+      {{range .TranscriptDetail.SharedWith}}<div class="compact-row"><span><strong>{{joinNonEmpty .Name .Email}}</strong><small>{{if .ExpiresAt}}Expires {{.ExpiresAt}}{{end}}</small></span></div>{{end}}
+      {{if and (not .TranscriptDetail.Channels) (not .TranscriptDetail.SharedWith)}}{{template "empty" "No channels or sharing records stored"}}{{end}}
+    </div>
+  </div>
+</section>
+
+{{if .TranscriptDetail.AppOutputs}}
+<section class="panel">
+  <div class="panel-header"><h2>App outputs</h2></div>
+  <div class="compact-list">
+    {{range .TranscriptDetail.AppOutputs}}
+      <details class="detail-block">
+        <summary>{{if .Title}}{{.Title}}{{else}}{{.AppID}}{{end}}</summary>
+        {{if .Prompt}}<p><strong>Prompt</strong><br>{{.Prompt}}</p>{{end}}
+        {{if .Response}}<p><strong>Response</strong><br>{{.Response}}</p>{{end}}
+      </details>
+    {{end}}
+  </div>
+</section>
+{{end}}
+
+<section class="panel">
+  <details class="detail-block">
+    <summary>Raw JSON</summary>
+    <pre class="raw-json">{{jsonPretty $t.RawJSON}}</pre>
+  </details>
+</section>
+{{template "chromeEnd" .}}
+{{end}}

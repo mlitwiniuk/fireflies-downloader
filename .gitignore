@@ -1,0 +1,15 @@
+fireflies_export/
+fireflies_delete_plan*.json
+.env
+.env.*
+!.env.example
+.mise.local.toml
+*.tmp
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.DS_Store
+dist/
+bin/
+coverage.out
+/mise.toml

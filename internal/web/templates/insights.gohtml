@@ -1,0 +1,137 @@
+{{define "insights.gohtml"}}
+{{template "chromeStart" .}}
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Coaching signals</p>
+    <h1>Insights</h1>
+  </div>
+  <a class="button" href="/people">People browser</a>
+</header>
+
+<section class="content-grid two">
+  <div class="panel">
+    <div class="panel-header"><h2>Suggestions</h2><span>heuristics from your archive</span></div>
+    <div class="coaching-list">
+      {{range .Insights.Suggestions}}
+        <article class="coaching-card">
+          <h3>{{.Title}}</h3>
+          <p>{{.Body}}</p>
+        </article>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h2>Sentiment over time</h2></div>
+    {{if .Insights.MonthlySentiment}}
+      <div class="bar-list">
+        {{range .Insights.MonthlySentiment}}
+          <div class="sentiment-row">
+            <span>{{.Label}}</span>
+            <div class="bar-track positive"><span class="bar-fill" style="width: {{barWidth .Positive 100}}"></span></div>
+            <strong>{{formatPercent .Positive}}</strong>
+            <div class="bar-track negative"><span class="bar-fill" style="width: {{barWidth .Negative 100}}"></span></div>
+            <strong>{{formatPercent .Negative}}</strong>
+          </div>
+        {{end}}
+      </div>
+    {{else}}
+      {{template "empty" "No sentiment data stored"}}
+    {{end}}
+  </div>
+</section>
+
+<section class="content-grid two">
+  <div class="panel">
+    <div class="panel-header"><h2>People sentiment</h2></div>
+    <div class="compact-list">
+      {{range .Insights.People}}
+        <a class="compact-row" href="/people?person={{.Key | urlquery}}">
+          <span>
+            <strong>{{.Label}}</strong>
+            <small>{{.Calls}} calls · {{formatDuration .TotalMinutes}}</small>
+          </span>
+          <span class="person-score">
+            <em class="sentiment positive">{{formatPercent .PositiveAvg}}</em>
+            <em class="sentiment negative">{{formatPercent .NegativeAvg}}</em>
+          </span>
+        </a>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h2>Speaker behavior</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Speaker</th><th>Calls</th><th>Talk</th><th>Questions/hr</th><th>WPM</th><th>Friction</th></tr></thead>
+        <tbody>
+          {{range .Insights.SpeakerPerformance}}
+            <tr>
+              <td><a class="table-title" href="/people?person={{.Key | urlquery}}">{{.Label}}</a></td>
+              <td>{{.SpokenCalls}}</td>
+              <td>{{formatPercent .TalkPct}}</td>
+              <td>{{printf "%.1f" .QuestionRate}}</td>
+              <td>{{printf "%.0f" .WordsPerMinute}}</td>
+              <td>{{formatPercent .NegativeAvg}}</td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="content-grid two">
+  <div class="panel">
+    <div class="panel-header"><h2>High-friction calls</h2></div>
+    <div class="compact-list">
+      {{range .Insights.RiskCalls}}
+        <a class="compact-row" href="/transcripts/{{.ID}}">
+          <span><strong>{{.Title}}</strong><small>{{formatDate .DateString}} · {{truncate .ShortSummary 90}}</small></span>
+          <em class="sentiment negative">{{formatPercent .NegativePct}}</em>
+        </a>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h2>High-positive calls</h2></div>
+    <div class="compact-list">
+      {{range .Insights.PositiveCalls}}
+        <a class="compact-row" href="/transcripts/{{.ID}}">
+          <span><strong>{{.Title}}</strong><small>{{formatDate .DateString}} · {{truncate .ShortSummary 90}}</small></span>
+          <em class="sentiment positive">{{formatPercent .PositivePct}}</em>
+        </a>
+      {{end}}
+    </div>
+  </div>
+</section>
+
+<section class="content-grid two">
+  <div class="panel">
+    <div class="panel-header"><h2>Talk dominance</h2><span>calls where one speaker took 55%+</span></div>
+    <div class="compact-list">
+      {{range .Insights.TalkDominance}}
+        <a class="compact-row" href="/transcripts/{{.TranscriptID}}">
+          <span><strong>{{.Title}}</strong><small>{{formatDate .DateString}} · {{.SpeakerName}}</small></span>
+          <em>{{formatPercent .Value}}</em>
+        </a>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h2>Question gaps</h2><span>10m+ calls with few questions</span></div>
+    <div class="compact-list">
+      {{range .Insights.QuestionGaps}}
+        <a class="compact-row" href="/transcripts/{{.TranscriptID}}">
+          <span><strong>{{.Title}}</strong><small>{{formatDate .DateString}}</small></span>
+          <em>{{printf "%.0f" .Value}} questions</em>
+        </a>
+      {{end}}
+    </div>
+  </div>
+</section>
+{{template "chromeEnd" .}}
+{{end}}

@@ -1,0 +1,96 @@
+{{define "people.gohtml"}}
+{{template "chromeStart" .}}
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Relationship map</p>
+    <h1>People</h1>
+  </div>
+</header>
+
+<section class="content-grid two people-layout">
+  <div class="panel">
+    <div class="panel-header">
+      <h2>People in calls</h2>
+      <span>{{formatNumber (len .People.People)}} people</span>
+    </div>
+    {{if .People.People}}
+      <div class="people-list">
+        {{range .People.People}}
+          <a class="person-row {{if and $.People.Selected (eq .Key $.People.Selected.Key)}}is-active{{end}}" href="/people?person={{.Key | urlquery}}">
+            <span>
+              <strong>{{.Label}}</strong>
+              <small>{{.Calls}} calls · {{formatDuration .TotalMinutes}} · last {{formatDate .LastSeen}}</small>
+            </span>
+            <span class="person-score">
+              <em class="sentiment positive">{{formatPercent .PositiveAvg}}</em>
+              <em class="sentiment negative">{{formatPercent .NegativeAvg}}</em>
+            </span>
+          </a>
+        {{end}}
+      </div>
+    {{else}}
+      {{template "empty" "No people found"}}
+    {{end}}
+  </div>
+
+  <div class="panel">
+    {{if .People.Selected}}
+      {{$p := .People.Selected}}
+      <div class="panel-header">
+        <h2>{{$p.Label}}</h2>
+        <a class="button ghost" href="/transcripts?person={{$p.Key | urlquery}}">View calls</a>
+      </div>
+      <section class="stat-grid compact person-stats">
+        <div class="stat"><span>Calls</span><strong>{{$p.Calls}}</strong></div>
+        <div class="stat"><span>Talk share</span><strong>{{formatPercent $p.TalkPct}}</strong></div>
+        <div class="stat"><span>Questions/hr</span><strong>{{printf "%.1f" $p.QuestionRate}}</strong></div>
+        <div class="stat"><span>Positive</span><strong>{{formatPercent $p.PositiveAvg}}</strong></div>
+      </section>
+      <dl class="meta-grid">
+        <dt>Email</dt><dd>{{if $p.Email}}{{$p.Email}}{{else}}Unknown{{end}}</dd>
+        <dt>As speaker</dt><dd>{{$p.SpokenCalls}} calls · {{formatDuration $p.TalkMinutes}} talk time</dd>
+        <dt>As attendee</dt><dd>{{$p.AttendeeCalls}} calls</dd>
+        <dt>As organizer</dt><dd>{{$p.OrganizerCalls}} calls</dd>
+        <dt>As host</dt><dd>{{$p.HostCalls}} calls</dd>
+        <dt>Words</dt><dd>{{formatNumber $p.WordCount}} · {{printf "%.0f" $p.WordsPerMinute}} wpm</dd>
+        <dt>Questions</dt><dd>{{formatNumber $p.Questions}}</dd>
+        <dt>Longest monologue</dt><dd>{{formatDuration $p.LongestMonologue}}</dd>
+      </dl>
+      <div class="metric-stack spacing-top">
+        <div><span>Talk share</span><strong>{{formatPercent $p.TalkPct}}</strong><div class="bar-track"><span class="bar-fill" style="width: {{barWidth $p.TalkPct 100}}"></span></div></div>
+        <div><span>Positive calls</span><strong>{{formatPercent $p.PositiveAvg}}</strong><div class="bar-track positive"><span class="bar-fill" style="width: {{barWidth $p.PositiveAvg 100}}"></span></div></div>
+        <div><span>Friction</span><strong>{{formatPercent $p.NegativeAvg}}</strong><div class="bar-track negative"><span class="bar-fill" style="width: {{barWidth $p.NegativeAvg 100}}"></span></div></div>
+      </div>
+    {{else}}
+      {{template "empty" "Select a person to inspect call history, sentiment, and speaking patterns"}}
+    {{end}}
+  </div>
+</section>
+
+{{if .People.Selected}}
+<section class="panel">
+  <div class="panel-header">
+    <h2>Calls with {{.People.Selected.Label}}</h2>
+  </div>
+  {{if .People.Calls}}
+    <div class="compact-list">
+      {{range .People.Calls}}
+        <a class="compact-row" href="/transcripts/{{.ID}}">
+          <span>
+            <strong>{{if .Title}}{{.Title}}{{else}}Untitled transcript{{end}}</strong>
+            <small>{{formatDate .DateString}} · {{joinNonEmpty .OrganizerEmail .MeetingType}}</small>
+          </span>
+          <span class="person-score">
+            <em class="sentiment positive">{{formatPercent .PositivePct}}</em>
+            <em class="sentiment negative">{{formatPercent .NegativePct}}</em>
+          </span>
+        </a>
+      {{end}}
+    </div>
+  {{else}}
+    {{template "empty" "No calls found for this person"}}
+  {{end}}
+</section>
+{{end}}
+{{template "chromeEnd" .}}
+{{end}}

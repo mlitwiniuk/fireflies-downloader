@@ -1,0 +1,105 @@
+{{define "dashboard.gohtml"}}
+{{template "chromeStart" .}}
+<header class="page-header">
+  <div>
+    <p class="eyebrow">Archive overview</p>
+    <h1>Dashboard</h1>
+  </div>
+  <div class="button-row">
+    <a class="button" href="/insights">Sales insights</a>
+    <a class="button" href="/transcripts">Browse transcripts</a>
+  </div>
+</header>
+
+<section class="stat-grid" aria-label="Archive totals">
+  <div class="stat"><span>Transcripts</span><strong>{{formatNumber .Dashboard.Stats.Transcripts}}</strong></div>
+  <div class="stat"><span>Hours</span><strong>{{formatHours .Dashboard.Stats.TotalMinutes}}</strong></div>
+  <div class="stat"><span>Sentences</span><strong>{{formatNumber .Dashboard.Stats.Sentences}}</strong></div>
+  <div class="stat"><span>Speakers</span><strong>{{formatNumber .Dashboard.Stats.DistinctSpeakers}}</strong></div>
+  <div class="stat"><span>Attendees</span><strong>{{formatNumber .Dashboard.Stats.ParticipantsCount}}</strong></div>
+  <div class="stat"><span>Media files</span><strong>{{formatNumber .Dashboard.Stats.MediaFiles}}</strong></div>
+</section>
+
+<section class="content-grid two">
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Monthly activity</h2>
+      <span>{{formatDate .Dashboard.Stats.FirstDate}} - {{formatDate .Dashboard.Stats.LastDate}}</span>
+    </div>
+    {{if .Dashboard.Months}}
+      <div class="bar-list">
+        {{range .Dashboard.Months}}
+          <div class="bar-row">
+            <span class="bar-label">{{.Label}}</span>
+            <div class="bar-track"><span class="bar-fill" style="width: {{barWidth .Count .Max}}"></span></div>
+            <span class="bar-value">{{.Count}}</span>
+          </div>
+        {{end}}
+      </div>
+    {{else}}
+      {{template "empty" "No transcript dates found"}}
+    {{end}}
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Meeting types</h2>
+    </div>
+    {{if .Dashboard.MeetingTypes}}
+      <div class="bar-list">
+        {{range .Dashboard.MeetingTypes}}
+          <div class="bar-row">
+            <span class="bar-label">{{.Label}}</span>
+            <div class="bar-track accent"><span class="bar-fill" style="width: {{barWidth .Count .Max}}"></span></div>
+            <span class="bar-value">{{.Count}}</span>
+          </div>
+        {{end}}
+      </div>
+    {{else}}
+      {{template "empty" "No meeting types found"}}
+    {{end}}
+  </div>
+</section>
+
+<section class="content-grid two">
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Top organizers</h2>
+    </div>
+    {{if .Dashboard.Organizers}}
+      <div class="rank-list">
+        {{range .Dashboard.Organizers}}
+          <a class="rank-row" href="/transcripts?organizer={{.Label | urlquery}}">
+            <span>{{.Label}}</span>
+            <small>{{.Count}} calls · {{formatDuration .Minutes}}</small>
+          </a>
+        {{end}}
+      </div>
+    {{else}}
+      {{template "empty" "No organizer data found"}}
+    {{end}}
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Recent transcripts</h2>
+    </div>
+    {{if .Dashboard.Recent}}
+      <div class="compact-list">
+        {{range .Dashboard.Recent}}
+          <a class="compact-row" href="/transcripts/{{.ID}}">
+            <span>
+              <strong>{{if .Title}}{{.Title}}{{else}}Untitled transcript{{end}}</strong>
+              <small>{{formatDate .DateString}} · {{joinNonEmpty .OrganizerEmail .MeetingType}}</small>
+            </span>
+            <em>{{formatDuration .Duration}}</em>
+          </a>
+        {{end}}
+      </div>
+    {{else}}
+      {{template "empty" "No transcripts found"}}
+    {{end}}
+  </div>
+</section>
+{{template "chromeEnd" .}}
+{{end}}
