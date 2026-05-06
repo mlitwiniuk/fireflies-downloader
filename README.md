@@ -13,6 +13,12 @@ The project is designed for people who want to:
 - Use Claude, ChatGPT, or another MCP client against local call data.
 - Later delete old Fireflies transcripts with a dry-run-first workflow.
 
+
+
+![web interface dashboard](https://humadroid-static-assets.s3.amazonaws.com/github/mlitwiniuk/shot%202026-05-06%20at%2020.19.50%20mN6A6C9p@2x.png)
+
+
+
 ## Contents
 
 - [Features](#features)
@@ -211,6 +217,8 @@ Include audio/video downloads when Fireflies returns media URLs:
 go run ./cmd/fireflies-downloader download --include-media
 ```
 
+You can also run this after a previous non-media export. Existing transcript JSON files are reused, but the downloader still checks for missing local media files. If a stored media URL has expired or the old JSON did not include media URLs, it refreshes that transcript detail and retries the media download.
+
 Filter by date:
 
 ```sh
@@ -291,7 +299,7 @@ go run ./cmd/fireflies-downloader download \
   --retry-max-wait 15m
 ```
 
-If you are on a daily limit, retries cannot bypass the daily quota. Use `--max` for smaller batches, keep the same `--output` directory, and resume later. Existing transcript JSON files are skipped unless `--overwrite` is passed.
+If you are on a daily limit, retries cannot bypass the daily quota. Use `--max` for smaller batches, keep the same `--output` directory, and resume later. Existing transcript JSON files are skipped unless `--overwrite` is passed. When `--include-media` is enabled, skipped transcripts are still checked for missing media.
 
 ## SQLite Database
 
@@ -519,7 +527,7 @@ go run ./cmd/fireflies-downloader delete-old \
 
 - Fireflies API limits apply. Free/Pro accounts currently have a daily API cap; Business/Enterprise accounts have a per-minute cap. See the Fireflies limits docs linked above.
 - Some fields are plan-gated or permission-gated. For example, Fireflies documents audio URL and meeting analytics availability as requiring Pro or higher in the transcript schema.
-- Media URLs can expire. Fireflies documents `audio_url` as a secure hashed URL that expires after 24 hours. Re-run the export if you need fresh media URLs.
+- Media URLs can expire. Fireflies documents `audio_url` as a secure hashed URL that expires after 24 hours. When backfilling missing media, the downloader refreshes transcript details if a stored URL fails.
 - Media downloads only happen when `--include-media` is set and Fireflies returns `audio_url` or `video_url`.
 - The archive can only export transcripts visible to the API key.
 - Fireflies may return different fields for live, processing, private, deleted, or restricted transcripts.
