@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -163,6 +164,21 @@ func downloadOne(ctx context.Context, client *fireflies.Client, item fireflies.T
 
 	if !opts.Overwrite && fileExists(path) {
 		result.Skipped = true
+		if opts.IncludeMedia {
+			media, profile, warning, err := backfillExistingTranscriptMedia(ctx, client, path, mediaDir, item.ID, opts)
+			if err != nil {
+				result.Error = err.Error()
+				return result
+			}
+			if profile != "" {
+				result.Profile = profile
+			}
+			if warning != "" {
+				result.Warning = warning
+			}
+			result.MediaFiles = media.Files
+			result.MediaErrors = media.Errors
+		}
 		return result
 	}
 
@@ -180,29 +196,79 @@ func downloadOne(ctx context.Context, client *fireflies.Client, item fireflies.T
 	}
 
 	if opts.IncludeMedia {
-		mediaFiles, mediaErrors := downloadTranscriptMedia(ctx, client.HTTPClient(), fetch.Raw, mediaDir, item.ID, opts.Overwrite)
-		result.MediaFiles = mediaFiles
-		result.MediaErrors = mediaErrors
+		media := downloadTranscriptMedia(ctx, client.HTTPClient(), fetch.Raw, mediaDir, item.ID, opts.Overwrite)
+		result.MediaFiles = media.Files
+		result.MediaErrors = media.Errors
 	}
 
 	return result
 }
 
-func downloadTranscriptMedia(ctx context.Context, httpClient *http.Client, raw json.RawMessage, mediaDir, id string, overwrite bool) (map[string]string, map[string]string) {
+type mediaDownloadResult struct {
+	Files    map[string]string
+	Errors   map[string]string
+	URLCount int
+}
+
+func backfillExistingTranscriptMedia(ctx context.Context, client *fireflies.Client, path, mediaDir, id string, opts DownloadOptions) (mediaDownloadResult, string, string, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return mediaDownloadResult{}, "", "", err
+	}
+
+	media := downloadTranscriptMedia(ctx, client.HTTPClient(), raw, mediaDir, id, opts.Overwrite)
+	if _, ok := media.Errors["json"]; ok {
+		return media, "", "", fmt.Errorf("parse existing transcript JSON %s: %s", path, media.Errors["json"])
+	}
+	if !shouldRefreshMediaURLs(media) {
+		return media, "", "", nil
+	}
+
+	fetch, err := client.GetTranscriptWithFallback(ctx, id, opts.Profile, opts.StrictProfile)
+	if err != nil {
+		if media.Errors == nil {
+			media.Errors = map[string]string{}
+		}
+		media.Errors["refresh"] = err.Error()
+		return media, "", "", nil
+	}
+	if err := writeRawJSONFile(path, fetch.Raw); err != nil {
+		return mediaDownloadResult{}, "", "", err
+	}
+
+	media = downloadTranscriptMedia(ctx, client.HTTPClient(), fetch.Raw, mediaDir, id, opts.Overwrite)
+	return media, fetch.Profile, fetch.Warning, nil
+}
+
+func shouldRefreshMediaURLs(media mediaDownloadResult) bool {
+	if len(media.Errors) > 0 {
+		return true
+	}
+	return media.URLCount == 0 && len(media.Files) == 0
+}
+
+func downloadTranscriptMedia(ctx context.Context, httpClient *http.Client, raw json.RawMessage, mediaDir, id string, overwrite bool) mediaDownloadResult {
 	var transcript map[string]any
 	if err := json.Unmarshal(raw, &transcript); err != nil {
-		return nil, map[string]string{"json": err.Error()}
+		return mediaDownloadResult{Errors: map[string]string{"json": err.Error()}}
 	}
 
 	files := map[string]string{}
 	errors := map[string]string{}
 	for _, kind := range []string{"audio_url", "video_url"} {
+		base := filepath.Join(mediaDir, safeFileName(id)+"."+strings.TrimSuffix(kind, "_url"))
+		if !overwrite {
+			if existing := existingMediaPath(base); existing != "" {
+				files[kind] = existing
+				continue
+			}
+		}
+
 		url, _ := transcript[kind].(string)
 		if url == "" {
 			continue
 		}
 
-		base := filepath.Join(mediaDir, safeFileName(id)+"."+strings.TrimSuffix(kind, "_url"))
 		path, err := downloadURL(ctx, httpClient, url, base, overwrite)
 		if err != nil {
 			errors[kind] = err.Error()
@@ -211,16 +277,29 @@ func downloadTranscriptMedia(ctx context.Context, httpClient *http.Client, raw j
 		files[kind] = path
 	}
 
+	urlCount := 0
+	for _, kind := range []string{"audio_url", "video_url"} {
+		if url, _ := transcript[kind].(string); url != "" {
+			urlCount++
+		}
+	}
+
 	if len(files) == 0 {
 		files = nil
 	}
 	if len(errors) == 0 {
 		errors = nil
 	}
-	return files, errors
+	return mediaDownloadResult{Files: files, Errors: errors, URLCount: urlCount}
 }
 
 func downloadURL(ctx context.Context, httpClient *http.Client, url, destBase string, overwrite bool) (string, error) {
+	if !overwrite {
+		if existing := existingMediaPath(destBase); existing != "" {
+			return existing, nil
+		}
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
@@ -270,4 +349,23 @@ func downloadURL(ctx context.Context, httpClient *http.Client, url, destBase str
 		return "", err
 	}
 	return dest, nil
+}
+
+func existingMediaPath(destBase string) string {
+	matches, err := filepath.Glob(destBase + ".*")
+	if err != nil {
+		return ""
+	}
+	sort.Strings(matches)
+	for _, match := range matches {
+		if strings.HasSuffix(match, ".tmp") {
+			continue
+		}
+		info, err := os.Stat(match)
+		if err != nil || info.IsDir() || info.Size() == 0 {
+			continue
+		}
+		return match
+	}
+	return ""
 }
